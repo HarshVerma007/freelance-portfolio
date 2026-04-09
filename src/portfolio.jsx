@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import emailjs from "@emailjs/browser";
 
 // ─── Particle Canvas Background ───────────────────────────────────────────────
 function ParticleBackground() {
@@ -83,7 +84,7 @@ function ParticleBackground() {
 }
 
 // ─── Shared Glow Button ────────────────────────────────────────────────────────
-function GlowButton({ children, onClick, outline = false, href }) {
+function GlowButton({ children, onClick, outline = false, href, disabled = false }) {
   const base = {
     display: "inline-block",
     padding: "12px 32px",
@@ -91,10 +92,11 @@ function GlowButton({ children, onClick, outline = false, href }) {
     fontWeight: 700,
     fontSize: "0.95rem",
     letterSpacing: "0.05em",
-    cursor: "pointer",
+    cursor: disabled ? "not-allowed" : "pointer",
     transition: "all 0.3s ease",
     textDecoration: "none",
     border: "none",
+    opacity: disabled ? 0.6 : 1,
   };
   const filled = {
     ...base,
@@ -112,7 +114,7 @@ function GlowButton({ children, onClick, outline = false, href }) {
   const style = outline ? outlined : filled;
   if (href)
     return <a href={href} style={style}>{children}</a>;
-  return <button style={style} onClick={onClick}>{children}</button>;
+  return <button style={style} onClick={onClick} disabled={disabled}>{children}</button>;
 }
 
 // ─── Custom Select Component ──────────────────────────────────────────────────
@@ -850,13 +852,41 @@ function Testimonials() {
 function Contact() {
   const [form, setForm] = useState({ name: "", email: "", project: "", message: "" });
   const [sent, setSent] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleSubmit = (e) => {
+  // Initialize EmailJS on component mount
+  useEffect(() => {
+    emailjs.init("st7AeCuJPi7uF7lSS"); // You'll get this from EmailJS dashboard
+  }, []);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // In production, wire up to EmailJS, Formspree, or your own API
-    setSent(true);
-    setForm({ name: "", email: "", project: "", message: "" });
-    setTimeout(() => setSent(false), 4000);
+    setLoading(true);
+    setError("");
+
+    try {
+      await emailjs.send(
+        "service_htneys9",     // You'll get this from EmailJS
+        "template_i21h4i7",    // You'll create this in EmailJS
+        {
+          from_name: form.name,
+          from_email: form.email,
+          project_type: form.project,
+          message: form.message,
+          to_email: "freelanceharsh007@gmail.com", // Your email
+        }
+      );
+
+      setSent(true);
+      setForm({ name: "", email: "", project: "", message: "" });
+      setTimeout(() => setSent(false), 4000);
+    } catch (err) {
+      setError("Failed to send message. Please try again.");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const inputStyle = {
@@ -901,6 +931,14 @@ function Contact() {
               borderRadius: 10, padding: "12px 18px", marginBottom: 24, color: "#06b6d4", fontSize: "0.9rem",
             }}>
               ✓ Message sent! I'll get back to you within 24 hours.
+            </div>
+          )}
+          {error && (
+            <div style={{
+              background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)",
+              borderRadius: 10, padding: "12px 18px", marginBottom: 24, color: "#ef4444", fontSize: "0.9rem",
+            }}>
+              ✗ {error}
             </div>
           )}
           <form onSubmit={handleSubmit}>
@@ -960,7 +998,9 @@ function Contact() {
                 onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.1)")}
               />
             </div>
-            <GlowButton>Send Message →</GlowButton>
+            <GlowButton disabled={loading}>
+              {loading ? "Sending..." : "Send Message →"}
+            </GlowButton>
           </form>
         </GlassCard>
 
